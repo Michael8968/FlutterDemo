@@ -12,6 +12,10 @@ import '../widgets/mood_trend_chart.dart';
 import '../widgets/symptom_stats_card.dart';
 import '../widgets/health_summary_card.dart';
 import '../widgets/period_selector.dart';
+import '../widgets/correlation_chart.dart';
+import '../widgets/calendar_heatmap.dart';
+import '../widgets/health_radar_chart.dart';
+import '../widgets/trend_comparison_chart.dart';
 
 /// 统计分析页面
 class StatisticsPage extends StatefulWidget {
@@ -124,6 +128,35 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
               // 压力与精力统计
               _buildStressEnergyCard(),
+              const SizedBox(height: 16),
+
+              // 健康雷达图
+              HealthRadarChart(
+                diaries: _diaries,
+                symptoms: _symptoms,
+                period: _selectedPeriod,
+              ),
+              const SizedBox(height: 16),
+
+              // 趋势对比图
+              TrendComparisonChart(
+                diaries: _diaries,
+                period: _selectedPeriod,
+              ),
+              const SizedBox(height: 16),
+
+              // 相关性分析
+              CorrelationChart(
+                diaries: _diaries,
+                period: _selectedPeriod,
+              ),
+              const SizedBox(height: 16),
+
+              // 日历热力图
+              CalendarHeatmap(
+                diaries: _diaries,
+                period: _selectedPeriod,
+              ),
               const SizedBox(height: 32),
             ],
           ),

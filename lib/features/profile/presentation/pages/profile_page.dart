@@ -9,6 +9,8 @@ import '../widgets/profile_header.dart';
 import '../widgets/health_goal_card.dart';
 import 'edit_profile_page.dart';
 import 'add_goal_page.dart';
+import '../../../export/presentation/pages/export_page.dart';
+import '../../../reminders/presentation/pages/reminder_settings_page.dart';
 
 /// 个人中心页面
 class ProfilePage extends StatefulWidget {
@@ -338,16 +340,22 @@ class _ProfilePageState extends State<ProfilePage> {
             title: const Text('提醒设置'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: 打开提醒设置
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReminderSettingsPage()),
+              );
             },
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.backup_outlined),
-            title: const Text('数据备份'),
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('数据导出'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: 打开数据备份
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ExportPage()),
+              );
             },
           ),
           const Divider(height: 1),
