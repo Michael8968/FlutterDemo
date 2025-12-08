@@ -77,6 +77,22 @@ class DiaryOperationSuccess extends DiaryState {
   List<Object?> get props => [message, entry];
 }
 
+/// 日期范围内日记加载成功
+class DiaryRangeLoaded extends DiaryState {
+  final List<DiaryEntry> entries;
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const DiaryRangeLoaded({
+    required this.entries,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  @override
+  List<Object?> get props => [entries, startDate, endDate];
+}
+
 /// 错误状态
 class DiaryError extends DiaryState {
   final String message;

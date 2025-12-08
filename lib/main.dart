@@ -14,6 +14,16 @@ import 'features/health_diary/data/repositories/diary_repository_impl.dart';
 import 'features/health_diary/presentation/bloc/diary_bloc.dart';
 import 'features/health_diary/presentation/pages/diary_home_page.dart';
 
+import 'features/dashboard/presentation/pages/dashboard_page.dart';
+
+import 'features/profile/data/datasources/profile_local_datasource.dart';
+import 'features/profile/data/models/user_profile_model.dart';
+import 'features/profile/data/repositories/profile_repository_impl.dart';
+import 'features/profile/presentation/bloc/profile_bloc.dart';
+import 'features/profile/presentation/pages/profile_page.dart';
+
+import 'features/ai_advisor/presentation/bloc/advisor_bloc.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -24,6 +34,9 @@ void main() async {
   Hive.registerAdapter(SymptomEntryModelAdapter());
   Hive.registerAdapter(DiaryEntryModelAdapter());
   Hive.registerAdapter(GoalProgressModelAdapter());
+  Hive.registerAdapter(UserProfileModelAdapter());
+  Hive.registerAdapter(HealthGoalModelAdapter());
+  Hive.registerAdapter(GoalRecordModelAdapter());
 
   runApp(const MyApp());
 }
@@ -44,6 +57,11 @@ class MyApp extends StatelessWidget {
       localDataSource: diaryLocalDataSource,
     );
 
+    final profileLocalDataSource = ProfileLocalDataSourceImpl();
+    final profileRepository = ProfileRepositoryImpl(
+      localDataSource: profileLocalDataSource,
+    );
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -51,6 +69,16 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => DiaryBloc(repository: diaryRepository),
+        ),
+        BlocProvider(
+          create: (_) => ProfileBloc(repository: profileRepository),
+        ),
+        BlocProvider(
+          create: (_) => AdvisorBloc(
+            diaryRepository: diaryRepository,
+            symptomRepository: symptomRepository,
+            profileRepository: profileRepository,
+          ),
         ),
       ],
       child: MaterialApp(
@@ -97,25 +125,33 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    DiaryHomePage(),
-    SymptomHistoryPage(),
-    _ProfilePlaceholder(),
-  ];
+  void _navigateToTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      DashboardPage(onNavigate: _navigateToTab),
+      const DiaryHomePage(),
+      const SymptomHistoryPage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
+        onDestinationSelected: _navigateToTab,
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: '首页',
+          ),
           NavigationDestination(
             icon: Icon(Icons.book_outlined),
             selectedIcon: Icon(Icons.book),
@@ -137,41 +173,3 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-/// 个人中心占位页面
-class _ProfilePlaceholder extends StatelessWidget {
-  const _ProfilePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.construction,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '功能开发中...',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '健康档案、设置等功能即将上线',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

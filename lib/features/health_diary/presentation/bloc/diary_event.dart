@@ -119,3 +119,14 @@ class LoadDiarySummary extends DiaryEvent {
   @override
   List<Object?> get props => [startDate, endDate];
 }
+
+/// 加载日期范围内的日记
+class LoadDiaryRange extends DiaryEvent {
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const LoadDiaryRange(this.startDate, this.endDate);
+
+  @override
+  List<Object?> get props => [startDate, endDate];
+}
