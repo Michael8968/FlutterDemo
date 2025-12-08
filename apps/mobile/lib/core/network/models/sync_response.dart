@@ -220,3 +220,58 @@ class SyncConflictItem {
 
   Map<String, dynamic> toJson() => _$SyncConflictItemToJson(this);
 }
+
+/// 备份数据响应
+@JsonSerializable()
+class BackupDataResponse {
+  final List<Map<String, dynamic>>? diaries;
+  final List<Map<String, dynamic>>? symptoms;
+  final Map<String, dynamic>? profile;
+  final Map<String, dynamic>? settings;
+  final String? version;
+
+  @JsonKey(name: 'created_at')
+  final DateTime? createdAt;
+
+  const BackupDataResponse({
+    this.diaries,
+    this.symptoms,
+    this.profile,
+    this.settings,
+    this.version,
+    this.createdAt,
+  });
+
+  factory BackupDataResponse.fromJson(Map<String, dynamic> json) =>
+      _$BackupDataResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BackupDataResponseToJson(this);
+}
+
+/// 同步状态响应
+@JsonSerializable()
+class SyncStatusResponse {
+  @JsonKey(name: 'last_sync_time')
+  final DateTime? lastSyncTime;
+
+  @JsonKey(name: 'pending_changes')
+  final int pendingChanges;
+
+  @JsonKey(name: 'is_syncing')
+  final bool isSyncing;
+
+  @JsonKey(name: 'server_time')
+  final DateTime? serverTime;
+
+  const SyncStatusResponse({
+    this.lastSyncTime,
+    this.pendingChanges = 0,
+    this.isSyncing = false,
+    this.serverTime,
+  });
+
+  factory SyncStatusResponse.fromJson(Map<String, dynamic> json) =>
+      _$SyncStatusResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SyncStatusResponseToJson(this);
+}

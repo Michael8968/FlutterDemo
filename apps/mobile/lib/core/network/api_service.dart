@@ -49,7 +49,7 @@ abstract class ApiService {
 
   /// 下载备份
   @GET('/sync/backup/{id}')
-  Future<Map<String, dynamic>> downloadBackup(@Path('id') String id);
+  Future<BackupDataResponse> downloadBackup(@Path('id') String id);
 
   /// 获取备份列表
   @GET('/sync/backups')
@@ -74,5 +74,5 @@ abstract class ApiService {
 
   /// 获取同步状态
   @GET('/sync/status')
-  Future<Map<String, dynamic>> getSyncStatus();
+  Future<SyncStatusResponse> getSyncStatus();
 }

@@ -142,7 +142,7 @@ class ApiCloudSyncService implements CloudSyncService {
 
     try {
       final response = await _apiService.downloadBackup(backupId);
-      final backup = BackupData.fromJson(response);
+      final backup = BackupData.fromJson(response.toJson());
 
       _syncStatus = SyncStatus.success;
 
