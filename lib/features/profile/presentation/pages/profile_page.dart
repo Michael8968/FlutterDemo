@@ -11,6 +11,12 @@ import 'edit_profile_page.dart';
 import 'add_goal_page.dart';
 import '../../../export/presentation/pages/export_page.dart';
 import '../../../reminders/presentation/pages/reminder_settings_page.dart';
+import '../../../achievements/presentation/pages/achievements_page.dart';
+import '../../../backup/presentation/pages/backup_page.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/l10n/locale_provider.dart';
 
 /// 个人中心页面
 class ProfilePage extends StatefulWidget {
@@ -336,6 +342,18 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         children: [
           ListTile(
+            leading: const Icon(Icons.emoji_events_outlined, color: Colors.amber),
+            title: const Text('我的成就'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AchievementsPage()),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('提醒设置'),
             trailing: const Icon(Icons.chevron_right),
@@ -360,6 +378,22 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const Divider(height: 1),
           ListTile(
+            leading: const Icon(Icons.cloud_sync_outlined, color: Colors.blue),
+            title: const Text('备份与同步'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BackupPage()),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _buildThemeSettingsTile(),
+          const Divider(height: 1),
+          _buildLanguageSettingsTile(),
+          const Divider(height: 1),
+          ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('关于'),
             trailing: const Icon(Icons.chevron_right),
@@ -371,6 +405,148 @@ class _ProfilePageState extends State<ProfilePage> {
                 applicationLegalese: '© 2024 AI Health Coach',
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeSettingsTile() {
+    final themeProvider = ThemeProviderWidget.maybeOf(context);
+    final currentMode = themeProvider?.themeMode ?? AppThemeMode.system;
+
+    return ListTile(
+      leading: Icon(
+        currentMode.icon,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.amber
+            : Colors.indigo,
+      ),
+      title: const Text('深色模式'),
+      subtitle: Text(currentMode.displayName),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showThemeSelectionDialog(themeProvider),
+    );
+  }
+
+  void _showThemeSelectionDialog(ThemeProvider? themeProvider) {
+    if (themeProvider == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppLocalizations.of(context).selectTheme),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppThemeMode.values.map((mode) {
+            final isSelected = themeProvider.themeMode == mode;
+            return ListTile(
+              leading: Icon(
+                mode.icon,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
+              ),
+              title: Text(
+                mode.displayName,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+              trailing: isSelected
+                  ? Icon(
+                      Icons.check,
+                      color: Theme.of(context).colorScheme.primary,
+                    )
+                  : null,
+              onTap: () {
+                themeProvider.setThemeMode(mode);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.of(context).cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageSettingsTile() {
+    final localeProvider = LocaleProviderWidget.maybeOf(context);
+    final currentLanguage = localeProvider?.language ?? AppLanguage.system;
+
+    return ListTile(
+      leading: const Icon(Icons.language, color: Colors.teal),
+      title: Text(AppLocalizations.of(context).language),
+      subtitle: Text(localeProvider?.getDisplayName(context) ?? currentLanguage.displayName),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showLanguageSelectionDialog(localeProvider),
+    );
+  }
+
+  void _showLanguageSelectionDialog(LocaleProvider? localeProvider) {
+    if (localeProvider == null) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalizations.of(context).selectLanguage),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppLanguage.values.map((lang) {
+            final isSelected = localeProvider.language == lang;
+            return ListTile(
+              leading: Icon(
+                lang == AppLanguage.system
+                    ? Icons.phone_android
+                    : Icons.language,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
+              ),
+              title: Text(
+                lang.displayName,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+              subtitle: lang != AppLanguage.system
+                  ? Text(
+                      lang.englishName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    )
+                  : null,
+              trailing: isSelected
+                  ? Icon(
+                      Icons.check,
+                      color: Theme.of(context).colorScheme.primary,
+                    )
+                  : null,
+              onTap: () {
+                localeProvider.setLanguage(lang);
+                Navigator.pop(dialogContext);
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
         ],
       ),

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
+import 'core/l10n/app_localizations.dart';
+import 'core/l10n/locale_provider.dart';
 
 import 'features/symptom_tracker/data/datasources/symptom_local_datasource.dart';
 import 'features/symptom_tracker/data/models/symptom_entry_model.dart';
@@ -23,6 +29,12 @@ import 'features/profile/presentation/bloc/profile_bloc.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
 
 import 'features/ai_advisor/presentation/bloc/advisor_bloc.dart';
+
+// 全局主题提供者
+final themeProvider = ThemeProvider();
+
+// 全局语言提供者
+final localeProvider = LocaleProvider();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,34 +93,43 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'AI Health Coach',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF4CAF50),
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-          ),
-          cardTheme: CardTheme(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          floatingActionButtonTheme: FloatingActionButtonThemeData(
-            backgroundColor: const Color(0xFF4CAF50),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+      child: LocaleProviderWidget(
+        localeProvider: localeProvider,
+        child: ThemeProviderWidget(
+          themeProvider: themeProvider,
+          child: ListenableBuilder(
+            listenable: Listenable.merge([themeProvider, localeProvider]),
+            builder: (context, _) {
+              return MaterialApp(
+                title: 'AI Health Coach',
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: themeProvider.materialThemeMode,
+                locale: localeProvider.locale,
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                localeResolutionCallback: (locale, supportedLocales) {
+                  if (localeProvider.locale != null) {
+                    return localeProvider.locale;
+                  }
+                  for (final supportedLocale in supportedLocales) {
+                    if (supportedLocale.languageCode == locale?.languageCode) {
+                      return supportedLocale;
+                    }
+                  }
+                  return supportedLocales.first;
+                },
+                home: const MainPage(),
+              );
+            },
           ),
         ),
-        home: const MainPage(),
       ),
     );
   }
@@ -146,26 +167,26 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: _navigateToTab,
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '首页',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: AppLocalizations.of(context).navHome,
           ),
           NavigationDestination(
-            icon: Icon(Icons.book_outlined),
-            selectedIcon: Icon(Icons.book),
-            label: '日记',
+            icon: const Icon(Icons.book_outlined),
+            selectedIcon: const Icon(Icons.book),
+            label: AppLocalizations.of(context).navDiary,
           ),
           NavigationDestination(
-            icon: Icon(Icons.healing_outlined),
-            selectedIcon: Icon(Icons.healing),
-            label: '症状',
+            icon: const Icon(Icons.healing_outlined),
+            selectedIcon: const Icon(Icons.healing),
+            label: AppLocalizations.of(context).navSymptom,
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: '我的',
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: AppLocalizations.of(context).navProfile,
           ),
         ],
       ),
