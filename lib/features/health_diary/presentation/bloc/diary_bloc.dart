@@ -15,6 +15,7 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
     on<SaveDiaryEvent>(_onSaveDiary);
     on<DeleteDiaryEvent>(_onDeleteDiary);
     on<LoadDiarySummary>(_onLoadDiarySummary);
+    on<LoadDiaryRange>(_onLoadDiaryRange);
   }
 
   Future<void> _onLoadDiaryByDate(
@@ -132,6 +133,24 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
     result.fold(
       (failure) => emit(DiaryError(failure.message)),
       (summary) => emit(DiarySummaryLoaded(summary)),
+    );
+  }
+
+  Future<void> _onLoadDiaryRange(
+    LoadDiaryRange event,
+    Emitter<DiaryState> emit,
+  ) async {
+    final result = await repository.getDiariesByDateRange(
+      event.startDate,
+      event.endDate,
+    );
+    result.fold(
+      (failure) => emit(DiaryError(failure.message)),
+      (entries) => emit(DiaryRangeLoaded(
+        entries: entries,
+        startDate: event.startDate,
+        endDate: event.endDate,
+      )),
     );
   }
 }
