@@ -2,6 +2,22 @@ import 'package:hive/hive.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/diary_entry_model.dart';
 
+/// 分页结果
+class PaginatedResult<T> {
+  final List<T> items;
+  final int totalCount;
+  final int page;
+  final int pageSize;
+  final bool hasMore;
+
+  PaginatedResult({
+    required this.items,
+    required this.totalCount,
+    required this.page,
+    required this.pageSize,
+  }) : hasMore = page * pageSize < totalCount;
+}
+
 /// 日记本地数据源接口
 abstract class DiaryLocalDataSource {
   Future<DiaryEntryModel> saveDiary(DiaryEntryModel entry);
@@ -15,6 +31,22 @@ abstract class DiaryLocalDataSource {
   Future<List<DiaryEntryModel>> getRecentDiaries({int limit = 7});
   Future<List<DateTime>> getDatesWithDiary(DateTime month);
   Future<List<DiaryEntryModel>> searchDiaries(String query);
+
+  /// 分页获取所有日记
+  Future<PaginatedResult<DiaryEntryModel>> getAllDiariesPaginated({
+    int page = 1,
+    int pageSize = 20,
+  });
+
+  /// 按心情筛选日记（分页）
+  Future<PaginatedResult<DiaryEntryModel>> getDiariesByMoodPaginated(
+    int moodValue, {
+    int page = 1,
+    int pageSize = 20,
+  });
+
+  /// 获取日记总数
+  Future<int> getDiaryCount();
 }
 
 /// 日记本地数据源 Hive 实现
@@ -161,6 +193,91 @@ class DiaryLocalDataSourceImpl implements DiaryLocalDataSource {
       return results;
     } catch (e) {
       throw CacheException('Failed to search diaries: $e');
+    }
+  }
+
+  @override
+  Future<PaginatedResult<DiaryEntryModel>> getAllDiariesPaginated({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final diaryBox = await box;
+      final allDiaries = diaryBox.values.toList();
+      allDiaries.sort((a, b) => b.date.compareTo(a.date));
+
+      final totalCount = allDiaries.length;
+      final startIndex = (page - 1) * pageSize;
+
+      if (startIndex >= totalCount) {
+        return PaginatedResult(
+          items: [],
+          totalCount: totalCount,
+          page: page,
+          pageSize: pageSize,
+        );
+      }
+
+      final endIndex = (startIndex + pageSize).clamp(0, totalCount);
+      final items = allDiaries.sublist(startIndex, endIndex);
+
+      return PaginatedResult(
+        items: items,
+        totalCount: totalCount,
+        page: page,
+        pageSize: pageSize,
+      );
+    } catch (e) {
+      throw CacheException('Failed to get paginated diaries: $e');
+    }
+  }
+
+  @override
+  Future<PaginatedResult<DiaryEntryModel>> getDiariesByMoodPaginated(
+    int moodValue, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final diaryBox = await box;
+      final filteredDiaries = diaryBox.values
+          .where((entry) => entry.moodValue == moodValue)
+          .toList();
+      filteredDiaries.sort((a, b) => b.date.compareTo(a.date));
+
+      final totalCount = filteredDiaries.length;
+      final startIndex = (page - 1) * pageSize;
+
+      if (startIndex >= totalCount) {
+        return PaginatedResult(
+          items: [],
+          totalCount: totalCount,
+          page: page,
+          pageSize: pageSize,
+        );
+      }
+
+      final endIndex = (startIndex + pageSize).clamp(0, totalCount);
+      final items = filteredDiaries.sublist(startIndex, endIndex);
+
+      return PaginatedResult(
+        items: items,
+        totalCount: totalCount,
+        page: page,
+        pageSize: pageSize,
+      );
+    } catch (e) {
+      throw CacheException('Failed to get diaries by mood: $e');
+    }
+  }
+
+  @override
+  Future<int> getDiaryCount() async {
+    try {
+      final diaryBox = await box;
+      return diaryBox.length;
+    } catch (e) {
+      throw CacheException('Failed to get diary count: $e');
     }
   }
 }

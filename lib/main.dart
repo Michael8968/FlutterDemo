@@ -3,38 +3,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/l10n/app_localizations.dart';
 import 'core/l10n/locale_provider.dart';
 
-import 'features/symptom_tracker/data/datasources/symptom_local_datasource.dart';
 import 'features/symptom_tracker/data/models/symptom_entry_model.dart';
-import 'features/symptom_tracker/data/repositories/symptom_repository_impl.dart';
 import 'features/symptom_tracker/presentation/bloc/symptom_bloc.dart';
 import 'features/symptom_tracker/presentation/pages/symptom_history_page.dart';
 
-import 'features/health_diary/data/datasources/diary_local_datasource.dart';
 import 'features/health_diary/data/models/diary_entry_model.dart';
-import 'features/health_diary/data/repositories/diary_repository_impl.dart';
 import 'features/health_diary/presentation/bloc/diary_bloc.dart';
 import 'features/health_diary/presentation/pages/diary_home_page.dart';
 
 import 'features/dashboard/presentation/pages/dashboard_page.dart';
 
-import 'features/profile/data/datasources/profile_local_datasource.dart';
 import 'features/profile/data/models/user_profile_model.dart';
-import 'features/profile/data/repositories/profile_repository_impl.dart';
 import 'features/profile/presentation/bloc/profile_bloc.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
 
 import 'features/ai_advisor/presentation/bloc/advisor_bloc.dart';
-
-// 全局主题提供者
-final themeProvider = ThemeProvider();
-
-// 全局语言提供者
-final localeProvider = LocaleProvider();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +39,9 @@ void main() async {
   Hive.registerAdapter(HealthGoalModelAdapter());
   Hive.registerAdapter(GoalRecordModelAdapter());
 
+  // 初始化依赖注入
+  configureDependencies();
+
   runApp(const MyApp());
 }
 
@@ -58,74 +50,54 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 创建依赖
-    final symptomLocalDataSource = SymptomLocalDataSourceImpl();
-    final symptomRepository = SymptomRepositoryImpl(
-      localDataSource: symptomLocalDataSource,
-    );
-
-    final diaryLocalDataSource = DiaryLocalDataSourceImpl();
-    final diaryRepository = DiaryRepositoryImpl(
-      localDataSource: diaryLocalDataSource,
-    );
-
-    final profileLocalDataSource = ProfileLocalDataSourceImpl();
-    final profileRepository = ProfileRepositoryImpl(
-      localDataSource: profileLocalDataSource,
-    );
-
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => SymptomBloc(repository: symptomRepository),
-        ),
-        BlocProvider(
-          create: (_) => DiaryBloc(repository: diaryRepository),
-        ),
-        BlocProvider(
-          create: (_) => ProfileBloc(repository: profileRepository),
-        ),
-        BlocProvider(
-          create: (_) => AdvisorBloc(
-            diaryRepository: diaryRepository,
-            symptomRepository: symptomRepository,
-            profileRepository: profileRepository,
-          ),
-        ),
+        BlocProvider(create: (_) => getIt<SymptomBloc>()),
+        BlocProvider(create: (_) => getIt<DiaryBloc>()),
+        BlocProvider(create: (_) => getIt<ProfileBloc>()),
+        BlocProvider(create: (_) => getIt<AdvisorBloc>()),
       ],
       child: LocaleProviderWidget(
-        localeProvider: localeProvider,
+        localeProvider: getIt<LocaleProvider>(),
         child: ThemeProviderWidget(
-          themeProvider: themeProvider,
-          child: ListenableBuilder(
-            listenable: Listenable.merge([themeProvider, localeProvider]),
-            builder: (context, _) {
-              return MaterialApp(
-                title: 'AI Health Coach',
-                debugShowCheckedModeBanner: false,
-                theme: AppTheme.lightTheme,
-                darkTheme: AppTheme.darkTheme,
-                themeMode: themeProvider.materialThemeMode,
-                locale: localeProvider.locale,
-                supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates: const [
-                  AppLocalizations.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                localeResolutionCallback: (locale, supportedLocales) {
-                  if (localeProvider.locale != null) {
-                    return localeProvider.locale;
-                  }
-                  for (final supportedLocale in supportedLocales) {
-                    if (supportedLocale.languageCode == locale?.languageCode) {
-                      return supportedLocale;
-                    }
-                  }
-                  return supportedLocales.first;
+          themeProvider: getIt<ThemeProvider>(),
+          child: Builder(
+            builder: (context) {
+              final themeProvider = ThemeProviderWidget.of(context);
+              final localeProvider = LocaleProviderWidget.of(context);
+
+              return ListenableBuilder(
+                listenable: Listenable.merge([themeProvider, localeProvider]),
+                builder: (context, _) {
+                  return MaterialApp(
+                    title: 'AI Health Coach',
+                    debugShowCheckedModeBanner: false,
+                    theme: AppTheme.lightTheme,
+                    darkTheme: AppTheme.darkTheme,
+                    themeMode: themeProvider.materialThemeMode,
+                    locale: localeProvider.locale,
+                    supportedLocales: AppLocalizations.supportedLocales,
+                    localizationsDelegates: const [
+                      AppLocalizations.delegate,
+                      GlobalMaterialLocalizations.delegate,
+                      GlobalWidgetsLocalizations.delegate,
+                      GlobalCupertinoLocalizations.delegate,
+                    ],
+                    localeResolutionCallback: (locale, supportedLocales) {
+                      if (localeProvider.locale != null) {
+                        return localeProvider.locale;
+                      }
+                      for (final supportedLocale in supportedLocales) {
+                        if (supportedLocale.languageCode ==
+                            locale?.languageCode) {
+                          return supportedLocale;
+                        }
+                      }
+                      return supportedLocales.first;
+                    },
+                    home: const MainPage(),
+                  );
                 },
-                home: const MainPage(),
               );
             },
           ),
@@ -193,4 +165,3 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
-

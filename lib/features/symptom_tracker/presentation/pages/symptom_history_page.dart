@@ -4,6 +4,8 @@ import '../bloc/symptom_bloc.dart';
 import '../bloc/symptom_event.dart';
 import '../bloc/symptom_state.dart';
 import '../widgets/symptom_list_tile.dart';
+import '../../domain/entities/symptom_entry.dart';
+import '../../domain/entities/body_part.dart';
 import 'symptom_input_page.dart';
 
 /// 症状历史页面
@@ -49,13 +51,18 @@ class _SymptomHistoryPageState extends State<SymptomHistoryPage> {
           IconButton(
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () {
-              // TODO: 导航到分析页面
               final now = DateTime.now();
               final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
               context.read<SymptomBloc>().add(LoadSymptomAnalysis(
                     DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day),
                     now,
                   ));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('正在加载本周症状分析...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
             },
             tooltip: '查看分析',
           ),
@@ -167,9 +174,7 @@ class _SymptomHistoryPageState extends State<SymptomHistoryPage> {
                       ),
                       ...items.map((symptom) => SymptomListTile(
                             entry: symptom,
-                            onTap: () {
-                              // TODO: 显示详情
-                            },
+                            onTap: () => _showSymptomDetails(symptom),
                             onDelete: () {
                               context.read<SymptomBloc>().add(
                                     DeleteSymptomEvent(symptom.id),
@@ -275,5 +280,264 @@ class _SymptomHistoryPageState extends State<SymptomHistoryPage> {
         ),
       ],
     );
+  }
+
+  void _showSymptomDetails(SymptomEntry symptom) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 拖动指示器
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // 症状名称和类型
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _getSeverityColor(symptom.severity).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      symptom.type.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          symptom.symptomName,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          symptom.type.displayName,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (symptom.isOngoing)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '进行中',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // 严重程度
+              _buildDetailSection(
+                icon: Icons.speed,
+                title: '严重程度',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: symptom.severity / 10,
+                          backgroundColor: Colors.grey.shade200,
+                          color: _getSeverityColor(symptom.severity),
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${symptom.severity}/10',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _getSeverityColor(symptom.severity),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 时间
+              _buildDetailSection(
+                icon: Icons.access_time,
+                title: '记录时间',
+                child: Text(
+                  _formatFullDate(symptom.timestamp),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+
+              // 持续时间
+              if (symptom.durationMinutes != null)
+                _buildDetailSection(
+                  icon: Icons.timer_outlined,
+                  title: '持续时间',
+                  child: Text(
+                    symptom.durationDisplay ?? '',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+
+              // 身体部位
+              if (symptom.bodyParts.isNotEmpty)
+                _buildDetailSection(
+                  icon: Icons.accessibility_new,
+                  title: '涉及部位',
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: symptom.bodyParts.map((part) {
+                      final bodyPart = _getBodyPartDisplayName(part);
+                      return Chip(
+                        label: Text(bodyPart),
+                        backgroundColor: Colors.blue.shade50,
+                        labelStyle: TextStyle(color: Colors.blue.shade700),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
+              // 诱因
+              if (symptom.triggers.isNotEmpty)
+                _buildDetailSection(
+                  icon: Icons.lightbulb_outline,
+                  title: '可能诱因',
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: symptom.triggers.map((trigger) {
+                      return Chip(
+                        label: Text(trigger),
+                        backgroundColor: Colors.orange.shade50,
+                        labelStyle: TextStyle(color: Colors.orange.shade700),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
+              // 备注
+              if (symptom.notes != null && symptom.notes!.isNotEmpty)
+                _buildDetailSection(
+                  icon: Icons.notes,
+                  title: '备注',
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      symptom.notes!,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSection({
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Color _getSeverityColor(int severity) {
+    if (severity <= 3) return Colors.green;
+    if (severity <= 5) return Colors.orange;
+    if (severity <= 8) return Colors.deepOrange;
+    return Colors.red;
+  }
+
+  String _formatFullDate(DateTime date) {
+    return '${date.year}年${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _getBodyPartDisplayName(String partId) {
+    try {
+      final bodyPart = BodyPart.values.firstWhere(
+        (part) => part.name == partId,
+      );
+      return bodyPart.displayName;
+    } catch (_) {
+      return partId;
+    }
   }
 }

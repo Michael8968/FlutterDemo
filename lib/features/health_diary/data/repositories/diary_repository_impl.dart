@@ -197,20 +197,56 @@ class DiaryRepositoryImpl implements DiaryRepository {
   }
 
   @override
-  Future<Either<Failure, List<DiaryEntry>>> getDiariesByMood(
+  Future<Either<Failure, PaginatedDiaries>> getDiariesByMood(
     MoodLevel mood, {
-    int? limit,
+    int page = 1,
+    int pageSize = 20,
   }) async {
     try {
-      final allResults = await localDataSource.getRecentDiaries(limit: 1000);
-      var filtered = allResults
-          .where((m) => m.moodValue == mood.value)
-          .map((m) => m.toEntity())
-          .toList();
-      if (limit != null && filtered.length > limit) {
-        filtered = filtered.take(limit).toList();
-      }
-      return Right(filtered);
+      final result = await localDataSource.getDiariesByMoodPaginated(
+        mood.value,
+        page: page,
+        pageSize: pageSize,
+      );
+      return Right(PaginatedDiaries(
+        items: result.items.map((m) => m.toEntity()).toList(),
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
+        hasMore: result.hasMore,
+      ));
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PaginatedDiaries>> getAllDiariesPaginated({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final result = await localDataSource.getAllDiariesPaginated(
+        page: page,
+        pageSize: pageSize,
+      );
+      return Right(PaginatedDiaries(
+        items: result.items.map((m) => m.toEntity()).toList(),
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
+        hasMore: result.hasMore,
+      ));
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, int>> getDiaryCount() async {
+    try {
+      final count = await localDataSource.getDiaryCount();
+      return Right(count);
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
     }
