@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_service.dart';
+import '../../../../core/network/token_manager.dart';
+import '../../../health_diary/data/datasources/diary_local_datasource.dart';
+import '../../../symptom_tracker/data/datasources/symptom_local_datasource.dart';
+import '../../../profile/data/datasources/profile_local_datasource.dart';
+import '../../data/services/api_cloud_sync_service.dart';
 import '../../domain/entities/backup_data.dart';
 import '../../domain/services/backup_service.dart';
-import '../../domain/services/cloud_sync_service.dart';
+import '../../domain/services/sync_manager.dart';
+import '../bloc/sync_bloc.dart';
+import '../bloc/sync_event.dart';
+import '../bloc/sync_state.dart';
 
 /// 备份与同步页面
 class BackupPage extends StatefulWidget {
@@ -16,10 +27,9 @@ class _BackupPageState extends State<BackupPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   BackupService? _backupService;
-  final MockCloudSyncService _cloudService = MockCloudSyncService();
+  SyncBloc? _syncBloc;
 
   List<BackupInfo> _localBackups = [];
-  List<BackupInfo> _cloudBackups = [];
   SyncSettings _settings = const SyncSettings();
   bool _isLoading = true;
   bool _isBackingUp = false;
@@ -29,12 +39,40 @@ class _BackupPageState extends State<BackupPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _initService();
+    _initServices();
   }
 
-  Future<void> _initService() async {
+  Future<void> _initServices() async {
     final prefs = await SharedPreferences.getInstance();
     _backupService = BackupService(prefs);
+
+    // 初始化云同步服务
+    final apiClient = ApiClient();
+    final tokenManager = TokenManager(prefs);
+    apiClient.setTokenManager(tokenManager);
+    final apiService = ApiService(apiClient.dio);
+
+    final cloudService = ApiCloudSyncService(
+      apiService: apiService,
+      tokenManager: tokenManager,
+      prefs: prefs,
+    );
+
+    final syncManager = SyncManager(
+      cloudService: cloudService,
+      diaryDataSource: DiaryLocalDataSourceImpl(),
+      symptomDataSource: SymptomLocalDataSourceImpl(),
+      profileDataSource: ProfileLocalDataSourceImpl(),
+    );
+
+    _syncBloc = SyncBloc(
+      cloudService: cloudService,
+      backupService: _backupService!,
+      syncManager: syncManager,
+    );
+
+    _syncBloc!.add(const SyncInitialized());
+
     await _loadData();
   }
 
@@ -44,11 +82,9 @@ class _BackupPageState extends State<BackupPage>
     if (_backupService != null) {
       final localBackups = await _backupService!.getLocalBackups();
       final settings = _backupService!.getSyncSettings();
-      final cloudBackups = await _cloudService.getCloudBackups();
 
       setState(() {
         _localBackups = localBackups;
-        _cloudBackups = cloudBackups;
         _settings = settings;
         _isLoading = false;
       });
@@ -58,31 +94,59 @@ class _BackupPageState extends State<BackupPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _syncBloc?.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('备份与同步'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: '本地备份'),
-            Tab(text: '云端同步'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
+    if (_syncBloc == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('备份与同步')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return BlocProvider.value(
+      value: _syncBloc!,
+      child: BlocListener<SyncBloc, SyncState>(
+        listener: (context, state) {
+          if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.error!),
+                backgroundColor: Colors.red,
+              ),
+            );
+            _syncBloc!.add(const SyncErrorCleared());
+          }
+
+          if (state.status == SyncStateStatus.success) {
+            _loadData();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('备份与同步'),
+            bottom: TabBar(
               controller: _tabController,
-              children: [
-                _buildLocalBackupTab(),
-                _buildCloudSyncTab(),
+              tabs: const [
+                Tab(text: '本地备份'),
+                Tab(text: '云端同步'),
               ],
             ),
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildLocalBackupTab(),
+                    _buildCloudSyncTab(),
+                  ],
+                ),
+        ),
+      ),
     );
   }
 
@@ -92,15 +156,10 @@ class _BackupPageState extends State<BackupPage>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 快速操作卡片
           _buildQuickActionsCard(),
           const SizedBox(height: 16),
-
-          // 自动备份设置
           _buildAutoBackupCard(),
           const SizedBox(height: 16),
-
-          // 本地备份列表
           _buildBackupListCard(),
         ],
       ),
@@ -160,7 +219,6 @@ class _BackupPageState extends State<BackupPage>
               ],
             ),
             const SizedBox(height: 12),
-            // 最后备份时间
             if (_settings.lastBackupTime != null)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -357,24 +415,25 @@ class _BackupPageState extends State<BackupPage>
   }
 
   Widget _buildCloudSyncTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 云端账户卡片
-        _buildCloudAccountCard(),
-        const SizedBox(height: 16),
-
-        // 同步操作卡片
-        if (_cloudService.isLoggedIn) ...[
-          _buildCloudActionsCard(),
-          const SizedBox(height: 16),
-          _buildCloudBackupListCard(),
-        ],
-      ],
+    return BlocBuilder<SyncBloc, SyncState>(
+      builder: (context, state) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildCloudAccountCard(state),
+            const SizedBox(height: 16),
+            if (state.isLoggedIn) ...[
+              _buildCloudActionsCard(state),
+              const SizedBox(height: 16),
+              _buildCloudBackupListCard(state),
+            ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCloudAccountCard() {
+  Widget _buildCloudAccountCard(SyncState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -395,7 +454,7 @@ class _BackupPageState extends State<BackupPage>
               ],
             ),
             const SizedBox(height: 16),
-            if (_cloudService.isLoggedIn) ...[
+            if (state.isLoggedIn) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -414,7 +473,7 @@ class _BackupPageState extends State<BackupPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _cloudService.userEmail ?? '用户',
+                            state.userEmail ?? '用户',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -428,37 +487,45 @@ class _BackupPageState extends State<BackupPage>
                       ),
                     ),
                     TextButton(
-                      onPressed: _signOut,
+                      onPressed: () => _syncBloc!.add(const SyncLogoutRequested()),
                       child: const Text('退出'),
                     ),
                   ],
                 ),
               ),
             ] else ...[
-              Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade300),
-                    const SizedBox(height: 8),
-                    const Text('登录后即可使用云端同步功能'),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _showLoginDialog(isSignUp: false),
-                          child: const Text('登录'),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: () => _showLoginDialog(isSignUp: true),
-                          child: const Text('注册'),
-                        ),
-                      ],
-                    ),
-                  ],
+              if (state.status == SyncStateStatus.authenticating)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade300),
+                      const SizedBox(height: 8),
+                      const Text('登录后即可使用云端同步功能'),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () => _showLoginDialog(isSignUp: false),
+                            child: const Text('登录'),
+                          ),
+                          const SizedBox(width: 12),
+                          OutlinedButton(
+                            onPressed: () => _showLoginDialog(isSignUp: true),
+                            child: const Text('注册'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ],
         ),
@@ -466,7 +533,9 @@ class _BackupPageState extends State<BackupPage>
     );
   }
 
-  Widget _buildCloudActionsCard() {
+  Widget _buildCloudActionsCard(SyncState state) {
+    final isSyncing = state.status.isLoading;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -487,11 +556,28 @@ class _BackupPageState extends State<BackupPage>
               ],
             ),
             const SizedBox(height: 16),
+            if (isSyncing && state.progressMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(state.progressMessage!),
+                  ],
+                ),
+              ),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _uploadToCloud,
+                    onPressed: isSyncing
+                        ? null
+                        : () => _syncBloc!.add(const SyncUploadRequested()),
                     icon: const Icon(Icons.cloud_upload),
                     label: const Text('上传到云端'),
                   ),
@@ -499,14 +585,16 @@ class _BackupPageState extends State<BackupPage>
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _syncFromCloud,
-                    icon: const Icon(Icons.cloud_download),
-                    label: const Text('从云端同步'),
+                    onPressed: isSyncing
+                        ? null
+                        : () => _syncBloc!.add(const SyncPerformRequested()),
+                    icon: const Icon(Icons.sync),
+                    label: const Text('双向同步'),
                   ),
                 ),
               ],
             ),
-            if (_settings.lastSyncTime != null) ...[
+            if (state.lastSyncTime != null) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -519,7 +607,7 @@ class _BackupPageState extends State<BackupPage>
                     const Icon(Icons.check_circle, color: Colors.green, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      '上次同步: ${_formatDate(_settings.lastSyncTime!)}',
+                      '上次同步: ${_formatDate(state.lastSyncTime!)}',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontSize: 13,
@@ -535,7 +623,7 @@ class _BackupPageState extends State<BackupPage>
     );
   }
 
-  Widget _buildCloudBackupListCard() {
+  Widget _buildCloudBackupListCard(SyncState state) {
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,7 +643,7 @@ class _BackupPageState extends State<BackupPage>
                 ),
                 const Spacer(),
                 Text(
-                  '${_cloudBackups.length}个备份',
+                  '${state.cloudBackups.length}个备份',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 13,
@@ -564,7 +652,7 @@ class _BackupPageState extends State<BackupPage>
               ],
             ),
           ),
-          if (_cloudBackups.isEmpty)
+          if (state.cloudBackups.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32),
               child: Center(
@@ -584,10 +672,10 @@ class _BackupPageState extends State<BackupPage>
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _cloudBackups.length,
+              itemCount: state.cloudBackups.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final backup = _cloudBackups[index];
+                final backup = state.cloudBackups[index];
                 return ListTile(
                   leading: Container(
                     width: 40,
@@ -608,9 +696,20 @@ class _BackupPageState extends State<BackupPage>
                     '${backup.dateDisplay} · ${backup.fileSizeDisplay}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _deleteCloudBackup(backup),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.download, color: Colors.blue),
+                        onPressed: () => _syncBloc!.add(
+                          SyncDownloadRequested(backupId: backup.cloudId!),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () => _deleteCloudBackup(backup),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -651,7 +750,6 @@ class _BackupPageState extends State<BackupPage>
   }
 
   Future<void> _importBackup() async {
-    // 显示提示对话框
     if (!mounted) return;
 
     showDialog(
@@ -714,9 +812,9 @@ class _BackupPageState extends State<BackupPage>
 
     setState(() => _isRestoring = true);
 
-    final backupDir = await _backupService!.exportBackup(backup.fileName);
-    if (backupDir != null) {
-      final result = await _backupService!.restoreFromFile(backupDir);
+    final backupPath = await _backupService!.exportBackup(backup.fileName);
+    if (backupPath != null) {
+      final result = await _backupService!.restoreFromFile(backupPath);
 
       setState(() => _isRestoring = false);
 
@@ -809,99 +907,24 @@ class _BackupPageState extends State<BackupPage>
             child: const Text('取消'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              final result = isSignUp
-                  ? await _cloudService.signUp(
-                      email: emailController.text,
-                      password: passwordController.text,
-                    )
-                  : await _cloudService.signIn(
-                      email: emailController.text,
-                      password: passwordController.text,
-                    );
-
-              if (mounted) {
-                Navigator.pop(context);
-                if (result.success) {
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isSignUp ? '注册成功' : '登录成功'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result.error ?? '操作失败'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+            onPressed: () {
+              Navigator.pop(context);
+              if (isSignUp) {
+                _syncBloc!.add(SyncRegisterRequested(
+                  email: emailController.text,
+                  password: passwordController.text,
+                ));
+              } else {
+                _syncBloc!.add(SyncLoginRequested(
+                  email: emailController.text,
+                  password: passwordController.text,
+                ));
               }
             },
             child: Text(isSignUp ? '注册' : '登录'),
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _signOut() async {
-    await _cloudService.signOut();
-    setState(() {});
-  }
-
-  Future<void> _uploadToCloud() async {
-    if (_backupService == null) return;
-
-    // 先创建本地备份
-    final localResult = await _backupService!.createBackup();
-    if (!localResult.success) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localResult.error ?? '备份失败'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    // 上传到云端（模拟）
-    final backup = BackupData(
-      version: '1.0.0',
-      createdAt: DateTime.now(),
-      deviceInfo: 'Device',
-      content: const BackupContent(),
-    );
-
-    final result = await _cloudService.uploadBackup(backup);
-
-    if (mounted) {
-      if (result.success) {
-        await _loadData();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('上传成功'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? '上传失败'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _syncFromCloud() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('同步功能开发中...')),
     );
   }
 
@@ -926,8 +949,7 @@ class _BackupPageState extends State<BackupPage>
     );
 
     if (confirm == true && backup.cloudId != null) {
-      await _cloudService.deleteCloudBackup(backup.cloudId!);
-      await _loadData();
+      _syncBloc!.add(SyncDeleteCloudBackup(backupId: backup.cloudId!));
     }
   }
 
