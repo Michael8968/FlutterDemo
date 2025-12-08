@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/di/injection.dart';
-import 'features/user/presentation/bloc/user_bloc.dart';
-import 'features/user/presentation/pages/user_list_page.dart';
-import 'features/user/domain/usecases/get_user_by_id.dart';
-import 'features/user/domain/usecases/get_all_users.dart';
-import 'features/user/domain/repositories/user_repository.dart';
-import 'features/user/data/repositories/user_repository_impl.dart';
-import 'features/user/data/datasources/user_remote_datasource.dart';
-import 'features/user/data/datasources/user_local_datasource.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
-  // 初始化依赖注入（使用 injectable 时取消注释）
-  // 首先运行: flutter pub run build_runner build --delete-conflicting-outputs
-  // configureDependencies();
-  
+import 'features/symptom_tracker/data/datasources/symptom_local_datasource.dart';
+import 'features/symptom_tracker/data/models/symptom_entry_model.dart';
+import 'features/symptom_tracker/data/repositories/symptom_repository_impl.dart';
+import 'features/symptom_tracker/presentation/bloc/symptom_bloc.dart';
+import 'features/symptom_tracker/presentation/pages/symptom_history_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化 Hive
+  await Hive.initFlutter();
+
+  // 注册 Hive TypeAdapter
+  Hive.registerAdapter(SymptomEntryModelAdapter());
+
   runApp(const MyApp());
 }
 
@@ -23,36 +25,43 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 方式1: 手动创建依赖（当前方式，用于演示）
-    final remoteDataSource = UserRemoteDataSourceImpl();
-    final localDataSource = UserLocalDataSourceImpl();
-    final userRepository = UserRepositoryImpl(
-      remoteDataSource: remoteDataSource,
-      localDataSource: localDataSource,
+    // 创建依赖
+    final symptomLocalDataSource = SymptomLocalDataSourceImpl();
+    final symptomRepository = SymptomRepositoryImpl(
+      localDataSource: symptomLocalDataSource,
     );
-    final getUserById = GetUserById(userRepository);
-    final getAllUsers = GetAllUsers(userRepository);
-
-    // 方式2: 使用依赖注入（配置 injectable 后使用）
-    // final getUserById = getIt<GetUserById>();
-    // final getAllUsers = getIt<GetAllUsers>();
-    // final userRepository = getIt<UserRepository>();
 
     return MaterialApp(
-      title: 'Flutter Clean Architecture Demo',
+      title: 'AI Health Coach',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4CAF50),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          elevation: 0,
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: const Color(0xFF4CAF50),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
       home: BlocProvider(
-        create: (context) => UserBloc(
-          getUserById: getUserById,
-          getAllUsers: getAllUsers,
-          userRepository: userRepository,
-        ),
-        child: const UserListPage(),
+        create: (context) => SymptomBloc(repository: symptomRepository),
+        child: const SymptomHistoryPage(),
       ),
     );
   }
 }
-
