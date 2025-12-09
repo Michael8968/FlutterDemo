@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import '../error/exceptions.dart';
 import 'token_manager.dart';
@@ -98,8 +99,9 @@ class ApiClient {
           try {
             final retryResponse = await _retryRequest(error.requestOptions);
             return handler.resolve(retryResponse);
-          } catch (e) {
-            // 重试失败
+          } catch (e, stackTrace) {
+            debugPrint('Token refresh retry failed: $e');
+            debugPrint('StackTrace: $stackTrace');
           }
         }
       }
@@ -160,8 +162,9 @@ class ApiClient {
         );
         return true;
       }
-    } catch (e) {
-      // 刷新失败
+    } catch (e, stackTrace) {
+      debugPrint('Token refresh failed: $e');
+      debugPrint('StackTrace: $stackTrace');
     } finally {
       _isRefreshing = false;
     }

@@ -14,8 +14,8 @@ void main() {
         symptomName: '头痛',
         type: SymptomType.pain,
         severity: 5,
-        bodyParts: ['head'],
-        triggers: ['压力', '睡眠不足'],
+        bodyParts: const ['head'],
+        triggers: const ['压力', '睡眠不足'],
         createdAt: now,
       );
 

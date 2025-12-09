@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/network/token_manager.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../health_diary/data/datasources/diary_local_datasource.dart';
 import '../../../symptom_tracker/data/datasources/symptom_local_datasource.dart';
 import '../../../profile/data/datasources/profile_local_datasource.dart';
@@ -112,12 +114,7 @@ class _BackupPageState extends State<BackupPage>
       child: BlocListener<SyncBloc, SyncState>(
         listener: (context, state) {
           if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error!),
-                backgroundColor: Colors.red,
-              ),
-            );
+            SnackBarHelper.showError(context, state.error!);
             _syncBloc!.add(const SyncErrorCleared());
           }
 
@@ -231,7 +228,7 @@ class _BackupPageState extends State<BackupPage>
                     const Icon(Icons.check_circle, color: Colors.green, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      '上次备份: ${_formatDate(_settings.lastBackupTime!)}',
+                      '上次备份: ${DateFormatter.formatDateTime(_settings.lastBackupTime!)}',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontSize: 13,
@@ -607,7 +604,7 @@ class _BackupPageState extends State<BackupPage>
                     const Icon(Icons.check_circle, color: Colors.green, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      '上次同步: ${_formatDate(state.lastSyncTime!)}',
+                      '上次同步: ${DateFormatter.formatDateTime(state.lastSyncTime!)}',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontSize: 13,
@@ -731,20 +728,10 @@ class _BackupPageState extends State<BackupPage>
 
     if (mounted) {
       if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('备份成功'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarHelper.showSuccess(context, '备份成功');
         await _loadData();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? '备份失败'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarHelper.showError(context, result.error ?? '备份失败');
       }
     }
   }
@@ -820,19 +807,9 @@ class _BackupPageState extends State<BackupPage>
 
       if (mounted) {
         if (result.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('恢复成功，共恢复 ${result.totalRestored} 条数据'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          SnackBarHelper.showSuccess(context, '恢复成功，共恢复 ${result.totalRestored} 条数据');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.error ?? '恢复失败'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackBarHelper.showError(context, result.error ?? '恢复失败');
         }
       }
     }
@@ -863,9 +840,7 @@ class _BackupPageState extends State<BackupPage>
       if (success == true) {
         await _loadData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已删除')),
-          );
+          SnackBarHelper.show(context, '已删除');
         }
       }
     }
@@ -951,10 +926,5 @@ class _BackupPageState extends State<BackupPage>
     if (confirm == true && backup.cloudId != null) {
       _syncBloc!.add(SyncDeleteCloudBackup(backupId: backup.cloudId!));
     }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} '
-        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

@@ -80,7 +80,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final newGoal = HealthGoal(
@@ -120,7 +120,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final updatedGoals = profile.healthGoals.map((g) {
@@ -151,7 +151,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final updatedGoals =
@@ -180,7 +180,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           HealthGoal? targetGoal;
@@ -196,7 +196,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
           }).toList();
 
           if (targetGoal == null) {
-            return Left(CacheFailure( '目标不存在'));
+            return const Left(CacheFailure('目标不存在'));
           }
 
           final updatedProfile = profile.copyWith(
@@ -221,7 +221,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           if (profile.allergies.contains(allergy)) {
@@ -249,7 +249,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final updatedProfile = profile.copyWith(
@@ -274,7 +274,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           if (profile.chronicDiseases.contains(disease)) {
@@ -303,7 +303,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final updatedProfile = profile.copyWith(
@@ -328,7 +328,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           if (profile.medications.contains(medication)) {
@@ -357,7 +357,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         (failure) => Left(failure),
         (profile) async {
           if (profile == null) {
-            return Left(CacheFailure( '档案不存在'));
+            return const Left(CacheFailure('档案不存在'));
           }
 
           final updatedProfile = profile.copyWith(
