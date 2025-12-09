@@ -34,9 +34,9 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/auth', authRoutes);
-app.use('/users', usersRoutes);
-app.use('/sync', syncRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', usersRoutes);
+app.use('/api/v1/sync', syncRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -65,22 +65,22 @@ async function bootstrap() {
     app.listen(config.port, () => {
       console.log(`Server is running on http://localhost:${config.port}`);
       console.log('Available routes:');
-      console.log('  POST   /auth/register');
-      console.log('  POST   /auth/login');
-      console.log('  POST   /auth/refresh');
-      console.log('  POST   /auth/logout');
-      console.log('  GET    /auth/verify');
-      console.log('  GET    /users');
-      console.log('  GET    /users/:id');
-      console.log('  POST   /users');
-      console.log('  DELETE /users/:id');
-      console.log('  POST   /sync/backup');
-      console.log('  GET    /sync/backup/:id');
-      console.log('  GET    /sync/backups');
-      console.log('  DELETE /sync/backup/:id');
-      console.log('  POST   /sync/incremental');
-      console.log('  GET    /sync/changes');
-      console.log('  GET    /sync/status');
+      console.log('  POST   /api/v1/auth/register');
+      console.log('  POST   /api/v1/auth/login');
+      console.log('  POST   /api/v1/auth/refresh');
+      console.log('  POST   /api/v1/auth/logout');
+      console.log('  GET    /api/v1/auth/verify');
+      console.log('  GET    /api/v1/users');
+      console.log('  GET    /api/v1/users/:id');
+      console.log('  POST   /api/v1/users');
+      console.log('  DELETE /api/v1/users/:id');
+      console.log('  POST   /api/v1/sync/backup');
+      console.log('  GET    /api/v1/sync/backup/:id');
+      console.log('  GET    /api/v1/sync/backups');
+      console.log('  DELETE /api/v1/sync/backup/:id');
+      console.log('  POST   /api/v1/sync/incremental');
+      console.log('  GET    /api/v1/sync/changes');
+      console.log('  GET    /api/v1/sync/status');
     });
   } catch (error) {
     console.error('Failed to start server:', error);

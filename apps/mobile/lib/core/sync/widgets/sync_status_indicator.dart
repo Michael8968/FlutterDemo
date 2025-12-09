@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../sync_manager.dart';
+import '../../../features/backup/presentation/pages/backup_page.dart';
 
 /// 同步状态指示器 Widget
 /// 显示当前同步状态，包括同步中、成功、失败、离线等状态
@@ -245,7 +246,13 @@ class _SyncDetailsSheet extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
-                        // TODO: 导航到登录页面
+                        // 导航到备份同步页面（云端同步 Tab）
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BackupPage(),
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.login),
                       label: const Text('登录账号'),

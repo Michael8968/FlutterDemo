@@ -1,9 +1,32 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../health_diary/domain/entities/diary_entry.dart';
 import '../../../symptom_tracker/domain/entities/symptom_entry.dart';
 import '../../../profile/domain/entities/user_profile.dart';
+
+/// 获取应用文档目录（带 Linux fallback）
+Future<Directory> _getAppDocumentsDirectory() async {
+  // Linux 平台直接使用 XDG 标准路径
+  if (defaultTargetPlatform == TargetPlatform.linux) {
+    try {
+      return await getApplicationDocumentsDirectory();
+    } catch (_) {
+      // Fallback: 通过 shell 获取 HOME 目录
+      try {
+        final result = await Process.run('sh', ['-c', 'echo \$HOME']);
+        final home = result.stdout.toString().trim();
+        if (home.isNotEmpty) {
+          return Directory('$home/.local/share/flutter_demo');
+        }
+      } catch (_) {}
+      // 最后的 fallback: 使用 /tmp
+      return Directory('/tmp/flutter_demo');
+    }
+  }
+  return await getApplicationDocumentsDirectory();
+}
 
 /// 导出格式
 enum ExportFormat {
@@ -406,7 +429,7 @@ class ExportService {
 
   /// 保存文件
   Future<String> _saveToFile(String fileName, String content) async {
-    final directory = await getApplicationDocumentsDirectory();
+    final directory = await _getAppDocumentsDirectory();
     final exportDir = Directory('${directory.path}/exports');
 
     if (!await exportDir.exists()) {
@@ -421,7 +444,7 @@ class ExportService {
 
   /// 获取导出目录中的所有文件
   Future<List<FileSystemEntity>> getExportedFiles() async {
-    final directory = await getApplicationDocumentsDirectory();
+    final directory = await _getAppDocumentsDirectory();
     final exportDir = Directory('${directory.path}/exports');
 
     if (!await exportDir.exists()) {

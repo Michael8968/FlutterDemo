@@ -1,10 +1,24 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../entities/achievement.dart';
+
+/// 获取临时目录（带 Linux fallback）
+Future<Directory> _getTempDirectory() async {
+  // Linux 平台
+  if (defaultTargetPlatform == TargetPlatform.linux) {
+    try {
+      return await getTemporaryDirectory();
+    } catch (_) {
+      return Directory('/tmp/flutter_demo');
+    }
+  }
+  return await getTemporaryDirectory();
+}
 
 /// 分享内容类型
 enum ShareContentType {
@@ -169,7 +183,7 @@ $encouragement
       final bytes = byteData.buffer.asUint8List();
 
       // 保存到临时文件
-      final tempDir = await getTemporaryDirectory();
+      final tempDir = await _getTempDirectory();
       final file = File('${tempDir.path}/share_image.png');
       await file.writeAsBytes(bytes);
 

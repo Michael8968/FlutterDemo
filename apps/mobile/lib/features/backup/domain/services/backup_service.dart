@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
@@ -15,9 +16,34 @@ class BackupService {
 
   BackupService(this._prefs);
 
+  /// 检查是否支持本地文件备份（Web 不支持）
+  bool get isLocalBackupSupported => !kIsWeb;
+
+  /// 获取应用文档目录（带 Linux fallback）
+  Future<Directory> _getAppDocumentsDirectory() async {
+    // Linux 平台直接使用 XDG 标准路径
+    if (defaultTargetPlatform == TargetPlatform.linux) {
+      try {
+        return await getApplicationDocumentsDirectory();
+      } catch (_) {
+        // Fallback: 通过 shell 获取 HOME 目录
+        try {
+          final result = await Process.run('sh', ['-c', 'echo \$HOME']);
+          final home = result.stdout.toString().trim();
+          if (home.isNotEmpty) {
+            return Directory('$home/.local/share/flutter_demo');
+          }
+        } catch (_) {}
+        // 最后的 fallback: 使用 /tmp
+        return Directory('/tmp/flutter_demo');
+      }
+    }
+    return await getApplicationDocumentsDirectory();
+  }
+
   /// 获取备份目录
   Future<Directory> _getBackupDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
+    final appDir = await _getAppDocumentsDirectory();
     final backupDir = Directory('${appDir.path}/backups');
     if (!await backupDir.exists()) {
       await backupDir.create(recursive: true);
@@ -30,6 +56,11 @@ class BackupService {
     BackupType type = BackupType.local,
     String? customName,
   }) async {
+    // Web 平台不支持本地文件备份
+    if (kIsWeb) {
+      return BackupResult.failure('Web 平台不支持本地备份，请使用云端同步功能');
+    }
+
     try {
       // 收集所有数据
       final content = await _collectAllData();
@@ -129,6 +160,10 @@ class BackupService {
 
   /// 从文件恢复
   Future<RestoreResult> restoreFromFile(String filePath) async {
+    if (kIsWeb) {
+      return RestoreResult.failure('Web 平台不支持文件恢复');
+    }
+
     try {
       final file = File(filePath);
       if (!await file.exists()) {
@@ -229,6 +264,8 @@ class BackupService {
 
   /// 获取所有本地备份
   Future<List<BackupInfo>> getLocalBackups() async {
+    if (kIsWeb) return [];
+
     try {
       final backupDir = await _getBackupDirectory();
       final files = await backupDir
@@ -266,6 +303,8 @@ class BackupService {
 
   /// 删除备份
   Future<bool> deleteBackup(String fileName) async {
+    if (kIsWeb) return false;
+
     try {
       final backupDir = await _getBackupDirectory();
       final file = File('${backupDir.path}/$fileName');
@@ -281,6 +320,8 @@ class BackupService {
 
   /// 分享备份文件
   Future<void> shareBackup(String fileName) async {
+    if (kIsWeb) return;
+
     try {
       final backupDir = await _getBackupDirectory();
       final file = File('${backupDir.path}/$fileName');
@@ -295,6 +336,8 @@ class BackupService {
 
   /// 导出备份到指定位置
   Future<String?> exportBackup(String fileName) async {
+    if (kIsWeb) return null;
+
     try {
       final backupDir = await _getBackupDirectory();
       final file = File('${backupDir.path}/$fileName');

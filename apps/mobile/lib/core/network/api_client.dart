@@ -76,6 +76,11 @@ class ApiClient {
     Response response,
     ResponseInterceptorHandler handler,
   ) {
+    // 解包 API 响应，提取 data 字段
+    final data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      response.data = data['data'];
+    }
     handler.next(response);
   }
 
