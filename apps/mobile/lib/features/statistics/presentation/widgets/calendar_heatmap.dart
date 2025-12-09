@@ -42,11 +42,11 @@ class _CalendarHeatmapState extends State<CalendarHeatmap> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.calendar_month, color: Colors.teal),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.calendar_month, color: Colors.teal),
+                SizedBox(width: 8),
+                Text(
                   '日历热力图',
                   style: TextStyle(
                     fontSize: 16,

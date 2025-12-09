@@ -397,7 +397,7 @@ class HealthAnalyzer {
 
     // 计算运动天数比例
     final activeDays = activityData.length;
-    final totalDays = diaries.length > 0 ? diaries.length : 1;
+    final totalDays = diaries.isNotEmpty ? diaries.length : 1;
     final activeRatio = activeDays / totalDays;
 
     if (activeRatio >= 0.7) {

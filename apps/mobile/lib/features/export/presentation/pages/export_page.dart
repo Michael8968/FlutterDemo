@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/file_utils.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../health_diary/domain/entities/diary_entry.dart';
 import '../../../health_diary/presentation/bloc/diary_bloc.dart';
 import '../../../health_diary/presentation/bloc/diary_event.dart';
@@ -103,12 +106,7 @@ class _ExportPageState extends State<ExportPage> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? '导出失败'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarHelper.showError(context, result.error ?? '导出失败');
       }
     }
   }
@@ -162,9 +160,7 @@ class _ExportPageState extends State<ExportPage> {
       await Share.shareXFiles([XFile(filePath)]);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败: $e')),
-        );
+        SnackBarHelper.showError(context, '分享失败: $e');
       }
     }
   }
@@ -193,9 +189,7 @@ class _ExportPageState extends State<ExportPage> {
       if (success) {
         await _loadExportedFiles();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('文件已删除')),
-          );
+          SnackBarHelper.show(context, '文件已删除');
         }
       }
     }
@@ -358,7 +352,7 @@ class _ExportPageState extends State<ExportPage> {
           children: [
             Icon(Icons.calendar_today, size: 18, color: Colors.grey.shade600),
             const SizedBox(width: 8),
-            Text(_formatDate(date)),
+            Text(DateFormatter.formatDate(date)),
           ],
         ),
       ),
@@ -557,10 +551,10 @@ class _ExportPageState extends State<ExportPage> {
   }
 
   Widget _buildFileItem(FileSystemEntity file) {
-    final fileName = file.path.split('/').last;
+    final fileName = FileUtils.getFileName(file.path);
     final stat = file.statSync();
-    final fileSize = _formatFileSize(stat.size);
-    final modifiedDate = _formatDateTime(stat.modified);
+    final fileSize = FileUtils.formatFileSize(stat.size);
+    final modifiedDate = DateFormatter.formatDateTimeShort(stat.modified);
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -614,19 +608,5 @@ class _ExportPageState extends State<ExportPage> {
     if (fileName.endsWith('.csv')) return Colors.green;
     if (fileName.endsWith('.json')) return Colors.orange;
     return Colors.blue;
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.month}/${dateTime.day} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
