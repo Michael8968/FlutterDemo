@@ -146,6 +146,81 @@ class DiaryEntryModel extends HiveObject {
       updatedAt: updatedAt,
     );
   }
+
+  /// 转换为 JSON 用于同步
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'moodValue': moodValue,
+      'sleepHours': sleepHours,
+      'sleepQualityValue': sleepQualityValue,
+      'bedTime': bedTime?.toIso8601String(),
+      'wakeTime': wakeTime?.toIso8601String(),
+      'stressLevel': stressLevel,
+      'energyLevel': energyLevel,
+      'waterIntake': waterIntake,
+      'steps': steps,
+      'weight': weight,
+      'activityIndices': activityIndices,
+      'weatherIndex': weatherIndex,
+      'notes': notes,
+      'gratitudes': gratitudes,
+      'goals': goals.map((g) => g.toJson()).toList(),
+      'symptomIds': symptomIds,
+      'photoPaths': photoPaths,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
+  }
+
+  /// 从 JSON 创建模型（用于从服务器同步）
+  factory DiaryEntryModel.fromJson(Map<String, dynamic> json) {
+    return DiaryEntryModel(
+      id: json['id'] as String,
+      date: DateTime.parse(json['date'] as String),
+      moodValue: json['moodValue'] as int,
+      sleepHours: (json['sleepHours'] as num?)?.toDouble(),
+      sleepQualityValue: json['sleepQualityValue'] as int?,
+      bedTime: json['bedTime'] != null
+          ? DateTime.parse(json['bedTime'] as String)
+          : null,
+      wakeTime: json['wakeTime'] != null
+          ? DateTime.parse(json['wakeTime'] as String)
+          : null,
+      stressLevel: json['stressLevel'] as int?,
+      energyLevel: json['energyLevel'] as int?,
+      waterIntake: json['waterIntake'] as int?,
+      steps: json['steps'] as int?,
+      weight: (json['weight'] as num?)?.toDouble(),
+      activityIndices: (json['activityIndices'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          [],
+      weatherIndex: json['weatherIndex'] as int?,
+      notes: json['notes'] as String?,
+      gratitudes: (json['gratitudes'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      goals: (json['goals'] as List<dynamic>?)
+              ?.map((e) => GoalProgressModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      symptomIds: (json['symptomIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      photoPaths: (json['photoPaths'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
+    );
+  }
 }
 
 @HiveType(typeId: 21)
@@ -178,6 +253,22 @@ class GoalProgressModel extends HiveObject {
       title: title,
       completed: completed,
       note: note,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'completed': completed,
+      'note': note,
+    };
+  }
+
+  factory GoalProgressModel.fromJson(Map<String, dynamic> json) {
+    return GoalProgressModel(
+      title: json['title'] as String,
+      completed: json['completed'] as bool,
+      note: json['note'] as String?,
     );
   }
 }

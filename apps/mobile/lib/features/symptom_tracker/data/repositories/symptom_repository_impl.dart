@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/sync/sync_manager.dart';
 import '../../domain/entities/symptom_entry.dart';
 import '../../domain/entities/symptom_category.dart';
 import '../../domain/repositories/symptom_repository.dart';
@@ -10,14 +11,27 @@ import '../models/symptom_entry_model.dart';
 /// 症状仓库实现
 class SymptomRepositoryImpl implements SymptomRepository {
   final SymptomLocalDataSource localDataSource;
+  final SyncManager? syncManager;
 
-  SymptomRepositoryImpl({required this.localDataSource});
+  SymptomRepositoryImpl({
+    required this.localDataSource,
+    this.syncManager,
+  });
 
   @override
   Future<Either<Failure, SymptomEntry>> addSymptom(SymptomEntry entry) async {
     try {
       final model = SymptomEntryModel.fromEntity(entry);
       final result = await localDataSource.addSymptom(model);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: entry.id,
+        dataType: 'symptom',
+        changeType: ChangeType.create,
+        data: model.toJson(),
+      ));
+
       return Right(result.toEntity());
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
@@ -29,6 +43,15 @@ class SymptomRepositoryImpl implements SymptomRepository {
     try {
       final model = SymptomEntryModel.fromEntity(entry);
       final result = await localDataSource.updateSymptom(model);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: entry.id,
+        dataType: 'symptom',
+        changeType: ChangeType.update,
+        data: model.toJson(),
+      ));
+
       return Right(result.toEntity());
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
@@ -39,6 +62,14 @@ class SymptomRepositoryImpl implements SymptomRepository {
   Future<Either<Failure, void>> deleteSymptom(String id) async {
     try {
       await localDataSource.deleteSymptom(id);
+
+      // 添加删除记录到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: id,
+        dataType: 'symptom',
+        changeType: ChangeType.delete,
+      ));
+
       return const Right(null);
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
@@ -253,6 +284,15 @@ class SymptomRepositoryImpl implements SymptomRepository {
       );
 
       final result = await localDataSource.updateSymptom(updated);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: id,
+        dataType: 'symptom',
+        changeType: ChangeType.update,
+        data: updated.toJson(),
+      ));
+
       return Right(result.toEntity());
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));

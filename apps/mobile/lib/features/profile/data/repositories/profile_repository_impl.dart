@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/sync/sync_manager.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/health_goal.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -9,8 +10,12 @@ import '../models/user_profile_model.dart';
 /// 用户档案仓库实现
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileLocalDataSource localDataSource;
+  final SyncManager? syncManager;
 
-  ProfileRepositoryImpl({required this.localDataSource});
+  ProfileRepositoryImpl({
+    required this.localDataSource,
+    this.syncManager,
+  });
 
   String _generateId() =>
       '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
@@ -30,6 +35,15 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       final model = UserProfileModel.fromEntity(profile);
       await localDataSource.saveProfile(model);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: profile.id,
+        dataType: 'profile',
+        changeType: ChangeType.create,
+        data: model.toJson(),
+      ));
+
       return Right(profile);
     } catch (e) {
       return Left(CacheFailure( '保存档案失败: $e'));
@@ -43,6 +57,15 @@ class ProfileRepositoryImpl implements ProfileRepository {
       final updatedProfile = profile.copyWith(updatedAt: DateTime.now());
       final model = UserProfileModel.fromEntity(updatedProfile);
       await localDataSource.saveProfile(model);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: profile.id,
+        dataType: 'profile',
+        changeType: ChangeType.update,
+        data: model.toJson(),
+      ));
+
       return Right(updatedProfile);
     } catch (e) {
       return Left(CacheFailure( '更新档案失败: $e'));

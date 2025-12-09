@@ -1,4 +1,5 @@
 import 'package:injectable/injectable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // User 模块
 import '../../features/user/data/datasources/user_local_datasource.dart';
@@ -33,8 +34,11 @@ import '../../features/ai_advisor/presentation/bloc/advisor_bloc.dart';
 import '../theme/theme_provider.dart';
 import '../l10n/locale_provider.dart';
 
-// Network
+// Network & Sync
 import '../network/api_client.dart';
+import '../network/api_service.dart';
+import '../network/token_manager.dart';
+import '../sync/sync_manager.dart';
 
 // ============ 数据源注册 ============
 @module
@@ -75,26 +79,38 @@ abstract class RepositoryModule {
         localDataSource: localDataSource,
       );
 
-  // Symptom
+  // Symptom - 注入 SyncManager
   @lazySingleton
   SymptomRepository symptomRepository(
     SymptomLocalDataSource localDataSource,
+    SyncManager syncManager,
   ) =>
-      SymptomRepositoryImpl(localDataSource: localDataSource);
+      SymptomRepositoryImpl(
+        localDataSource: localDataSource,
+        syncManager: syncManager,
+      );
 
-  // Diary
+  // Diary - 注入 SyncManager
   @lazySingleton
   DiaryRepository diaryRepository(
     DiaryLocalDataSource localDataSource,
+    SyncManager syncManager,
   ) =>
-      DiaryRepositoryImpl(localDataSource: localDataSource);
+      DiaryRepositoryImpl(
+        localDataSource: localDataSource,
+        syncManager: syncManager,
+      );
 
-  // Profile
+  // Profile - 注入 SyncManager
   @lazySingleton
   ProfileRepository profileRepository(
     ProfileLocalDataSource localDataSource,
+    SyncManager syncManager,
   ) =>
-      ProfileRepositoryImpl(localDataSource: localDataSource);
+      ProfileRepositoryImpl(
+        localDataSource: localDataSource,
+        syncManager: syncManager,
+      );
 }
 
 // ============ UseCase 注册 ============
@@ -147,9 +163,30 @@ abstract class ProviderModule {
   LocaleProvider get localeProvider => LocaleProvider();
 }
 
-// ============ 网络模块注册 ============
+// ============ 网络与同步模块注册 ============
 @module
 abstract class NetworkModule {
   @lazySingleton
   ApiClient get apiClient => ApiClient();
+
+  @lazySingleton
+  TokenManager tokenManager(SharedPreferences prefs) => TokenManager(prefs);
+
+  @lazySingleton
+  ApiService apiService(ApiClient apiClient, TokenManager tokenManager) {
+    apiClient.setTokenManager(tokenManager);
+    return ApiService(apiClient.dio);
+  }
+
+  @lazySingleton
+  SyncManager syncManager(
+    ApiService apiService,
+    TokenManager tokenManager,
+    SharedPreferences prefs,
+  ) =>
+      SyncManager(
+        apiService: apiService,
+        tokenManager: tokenManager,
+        prefs: prefs,
+      );
 }

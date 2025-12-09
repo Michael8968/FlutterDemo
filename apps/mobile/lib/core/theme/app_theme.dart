@@ -29,7 +29,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         elevation: 1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -93,7 +93,7 @@ class AppTheme {
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      tabBarTheme: TabBarThemeData(
+      tabBarTheme: TabBarTheme(
         labelColor: primaryColor,
         unselectedLabelColor: Colors.grey,
         indicatorColor: primaryColor,
@@ -105,7 +105,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
         ),
       ),
-      dialogTheme: DialogThemeData(
+      dialogTheme: DialogTheme(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -136,7 +136,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -200,7 +200,7 @@ class AppTheme {
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      tabBarTheme: const TabBarThemeData(
+      tabBarTheme: const TabBarTheme(
         labelColor: primaryColorDark,
         unselectedLabelColor: Colors.grey,
         indicatorColor: primaryColorDark,
@@ -213,7 +213,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
         ),
       ),
-      dialogTheme: DialogThemeData(
+      dialogTheme: DialogTheme(
         backgroundColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

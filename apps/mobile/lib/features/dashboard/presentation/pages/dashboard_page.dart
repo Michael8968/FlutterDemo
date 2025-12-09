@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/sync/sync_manager.dart';
+import '../../../../core/sync/widgets/sync_status_indicator.dart';
 import '../../../health_diary/domain/entities/diary_entry.dart';
 import '../../../health_diary/presentation/bloc/diary_bloc.dart';
 import '../../../health_diary/presentation/bloc/diary_event.dart';
@@ -101,6 +104,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 expandedHeight: 120,
                 floating: false,
                 pinned: true,
+                actions: [
+                  // 同步状态指示器
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SyncStatusIndicator(
+                      syncManager: getIt<SyncManager>(),
+                    ),
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
                     _getGreeting(),
