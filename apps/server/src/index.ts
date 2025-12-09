@@ -1,13 +1,15 @@
 import 'reflect-metadata';
+import dotenv from 'dotenv';
+
+// Load environment variables BEFORE importing config
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { config, initializeDatabase } from './config';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
 import syncRoutes from './routes/sync';
-
-dotenv.config();
 
 const app = express();
 

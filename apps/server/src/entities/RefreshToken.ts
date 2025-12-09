@@ -18,7 +18,7 @@ export class RefreshToken {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'varchar', length: 512 })
   token: string;
 
   @Column({ name: 'expires_at' })

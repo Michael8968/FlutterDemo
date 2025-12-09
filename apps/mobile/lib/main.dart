@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
@@ -38,6 +39,10 @@ void main() async {
   Hive.registerAdapter(UserProfileModelAdapter());
   Hive.registerAdapter(HealthGoalModelAdapter());
   Hive.registerAdapter(GoalRecordModelAdapter());
+
+  // 初始化 SharedPreferences（用于同步管理）
+  final prefs = await SharedPreferences.getInstance();
+  getIt.registerSingleton<SharedPreferences>(prefs);
 
   // 初始化依赖注入
   configureDependencies();

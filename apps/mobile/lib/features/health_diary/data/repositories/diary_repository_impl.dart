@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/sync/sync_manager.dart';
 import '../../domain/entities/diary_entry.dart';
 import '../../domain/entities/mood_level.dart';
 import '../../domain/repositories/diary_repository.dart';
@@ -10,14 +11,27 @@ import '../models/diary_entry_model.dart';
 /// 日记仓库实现
 class DiaryRepositoryImpl implements DiaryRepository {
   final DiaryLocalDataSource localDataSource;
+  final SyncManager? syncManager;
 
-  DiaryRepositoryImpl({required this.localDataSource});
+  DiaryRepositoryImpl({
+    required this.localDataSource,
+    this.syncManager,
+  });
 
   @override
   Future<Either<Failure, DiaryEntry>> saveDiary(DiaryEntry entry) async {
     try {
       final model = DiaryEntryModel.fromEntity(entry);
       final result = await localDataSource.saveDiary(model);
+
+      // 添加到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: entry.id,
+        dataType: 'diary',
+        changeType: ChangeType.update,
+        data: model.toJson(),
+      ));
+
       return Right(result.toEntity());
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
@@ -28,6 +42,14 @@ class DiaryRepositoryImpl implements DiaryRepository {
   Future<Either<Failure, void>> deleteDiary(String id) async {
     try {
       await localDataSource.deleteDiary(id);
+
+      // 添加删除记录到同步队列
+      syncManager?.addPendingChange(PendingChange(
+        id: id,
+        dataType: 'diary',
+        changeType: ChangeType.delete,
+      ));
+
       return const Right(null);
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));

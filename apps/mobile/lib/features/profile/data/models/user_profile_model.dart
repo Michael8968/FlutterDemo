@@ -116,6 +116,62 @@ class UserProfileModel extends HiveObject {
       updatedAt: updatedAt,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nickname': nickname,
+      'avatarUrl': avatarUrl,
+      'genderIndex': genderIndex,
+      'birthday': birthday?.toIso8601String(),
+      'height': height,
+      'weight': weight,
+      'bloodTypeIndex': bloodTypeIndex,
+      'allergies': allergies,
+      'chronicDiseases': chronicDiseases,
+      'medications': medications,
+      'emergencyContact': emergencyContact,
+      'emergencyPhone': emergencyPhone,
+      'healthGoals': healthGoals.map((g) => g.toJson()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory UserProfileModel.fromJson(Map<String, dynamic> json) {
+    return UserProfileModel(
+      id: json['id'] as String,
+      nickname: json['nickname'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
+      genderIndex: json['genderIndex'] as int?,
+      birthday: json['birthday'] != null
+          ? DateTime.parse(json['birthday'] as String)
+          : null,
+      height: (json['height'] as num?)?.toDouble(),
+      weight: (json['weight'] as num?)?.toDouble(),
+      bloodTypeIndex: json['bloodTypeIndex'] as int?,
+      allergies: (json['allergies'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      chronicDiseases: (json['chronicDiseases'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      medications: (json['medications'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      emergencyContact: json['emergencyContact'] as String?,
+      emergencyPhone: json['emergencyPhone'] as String?,
+      healthGoals: (json['healthGoals'] as List<dynamic>?)
+              ?.map((e) => HealthGoalModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 }
 
 @HiveType(typeId: 31)
@@ -199,6 +255,43 @@ class HealthGoalModel extends HiveObject {
       updatedAt: updatedAt,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'typeIndex': typeIndex,
+      'targetValue': targetValue,
+      'currentValue': currentValue,
+      'frequencyIndex': frequencyIndex,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'isActive': isActive,
+      'records': records.map((r) => r.toJson()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory HealthGoalModel.fromJson(Map<String, dynamic> json) {
+    return HealthGoalModel(
+      id: json['id'] as String,
+      typeIndex: json['typeIndex'] as int,
+      targetValue: (json['targetValue'] as num).toDouble(),
+      currentValue: (json['currentValue'] as num?)?.toDouble() ?? 0,
+      frequencyIndex: json['frequencyIndex'] as int? ?? 0,
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : null,
+      isActive: json['isActive'] as bool? ?? true,
+      records: (json['records'] as List<dynamic>?)
+              ?.map((e) => GoalRecordModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 }
 
 @HiveType(typeId: 32)
@@ -237,6 +330,24 @@ class GoalRecordModel extends HiveObject {
       date: date,
       value: value,
       note: note,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'value': value,
+      'note': note,
+    };
+  }
+
+  factory GoalRecordModel.fromJson(Map<String, dynamic> json) {
+    return GoalRecordModel(
+      id: json['id'] as String,
+      date: DateTime.parse(json['date'] as String),
+      value: (json['value'] as num).toDouble(),
+      note: json['note'] as String?,
     );
   }
 }
